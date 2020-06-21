@@ -16,7 +16,7 @@ library(dplyr)
 library(raster)
 library(rgdal)
 
-# LSOA centroids
+#RC change - LSOA centroids from Paul's file rather than from code
 lsoa_cntrds <- read.csv("lsoa_cntrds.csv")
 
 # English parkrun event locations 2018
@@ -29,7 +29,7 @@ lsoa_distance <- data.frame(code = lsoa_cntrds$code,
                             mn_dstn = lsoa_distance / 1000) # in km
 rm("dist_M_full","parkrun_events","lsoa_cntrds")
 
-# LSOA parkrun participation
+# RC change: LSOA parkrun participation - one day only
 lsoa_participation = read.csv("./cleaned_data/runs_per_lsoa_05Aug2017.csv", stringsAsFactors = F)
 
 # LSOA total population
@@ -67,6 +67,9 @@ lsoa_ruralurban <- read.csv("./raw_data/LSOA_Rural_Urban_Classification_2011.csv
 # merge everything
 lsoa_df = Reduce(function(x, y) merge(x, y,by="code", all=TRUE), list(lsoa_participation,lsoa_distance, lsoa_imd, lsoa_pop,lsoa_density,lsoa_ethnicity,lsoa_ruralurban))
 lsoa_df$run_count[is.na(lsoa_df$run_count)] = 0
+
+#RC change: I delete NAs
+lsoa_df<-lsoa_df[complete.cases(lsoa_df),]
 
 
 

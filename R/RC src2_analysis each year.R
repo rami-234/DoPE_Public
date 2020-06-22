@@ -20,7 +20,6 @@ library(stargazer)
 # LOAD DATA
 #===
 
-
 df <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
   dplyr::select(year,run_count,imd, perc_bme, mn_dstn,  
                 total_pop, pop_density,perc_non_working_age)%>%
@@ -33,14 +32,51 @@ df$run_rate[df$year=="2010"]<-df$run_count[df$year=="2010"]/df$total_pop[df$year
 #Now create different datasets for each year
 #ideally with a loop so I can run all codes below with a loop
 #How do I do this? 
-#I can see some loop drafts in DoPE_temporal but I am not sure how to adapt them?
+#I can see some loop drafts in DoPE_temporal and tried to transfer them here but don't really understand..
+#I need to change all code from DoPE_Public so that plots and results 
+#for each year are saved with separate names..
 
-#RC loop attempt
-for (i in 2010:2019)
-     {df<-df[df$year==i,] #I close the curly brackets at the very end
+#RC loop attempt:
+#First I create a storage place for results? like Storage_model_3 <-numeric(10) ?
+#Is this code not needed? for (i in df$year) {df<-df[df$year==i,] ...
+
+   
+     # MODEL FUNCTIONS (WHICH WILL BE RUN FOR EACH YEAR)
      
-    #but I need to change all code below so that plots and results 
-     #for each year are saved with separate names, how do I do this?
+     
+     # poisson regression model
+     f_model = function(x) {
+      
+     
+       # Model 3: Poisson model with IMD and Ethnic density and controls - can we prioritise this for now
+       #and leave model 1 and 2 for now?
+       model3 <-  glm(run_count ~ imd + perc_bme +  pop_density + mn_dstn + perc_non_working_age,
+                      data = df,
+                      family = poisson(link="log"),
+                      offset = log(total_pop),
+                      subset=which(df$year==x))
+       
+       # stargazer(model3,ci=TRUE, ci.level=0.95)
+       
+       x = summary(model3)
+       r1.3 = 1-((x$deviance-length(coef(x)[,1]))/x$null.deviance)
+       
+      
+       #RC: code below on predict from DoPE temporal, I don't understand it at all..
+       # predict number of runs in most and least deprived community.
+       temp = predict(object = model3, newdata = fakedata)
+       
+       # return ratio
+       return(temp[1]/temp[2])
+     }
+     
+     # RUN MODEL FOR EACH YEAR
+     results <- sapply(X = 2010:2019,
+                       FUN = f_model) %>% 
+       as.data.frame %>% 
+       mutate(year = 2010:2019)
+     
+ 
   
 #===
 # DESCRIPTIVE STATISTICS - TABLE 2
@@ -60,6 +96,9 @@ stargazer(df %>% mutate(perc_non_working_age = perc_non_working_age*100,
                              "Population Density",
                              "Non-working age",
                              "Participation Rate"))
+
+
+# plots for each year...
 
 #===
 # CORRELATION PLOT - UNUSED
@@ -135,6 +174,8 @@ df <- read.csv("./output/lsoa_df.csv")
 
 df$pop_density = log(df$pop_density )  # tranforming pop_density to log scale
 
+#RC: Do we want to run model 1 and 2? Shall we prioritise model 3?
+
 #===
 # Model 1: Poisson model IMD and controls.
 #===
@@ -168,19 +209,7 @@ r1.2 = 1-((x$deviance-length(coef(x)[,1]))/x$null.deviance)
 # r1.2
 
 
-#===
-# Model 3: Poisson model with IMD and Ethnic density and controls
-#===
 
-model3 <-  glm(run_count ~ imd + perc_bme +  pop_density + mn_dstn + perc_non_working_age,
-               data = df,
-               family = poisson(link="log"),
-               offset = log(total_pop))
-
-# stargazer(model3,ci=TRUE, ci.level=0.95)
-
-x = summary(model3)
-r1.3 = 1-((x$deviance-length(coef(x)[,1]))/x$null.deviance)
 
 
 # PLOT stargazer plot of models
@@ -196,4 +225,5 @@ stargazer(model1, model2, model3,
                                "Distance(km)",
                                "Non-working-age"))
 
-}
+
+

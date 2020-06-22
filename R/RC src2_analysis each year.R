@@ -20,64 +20,137 @@ library(stargazer)
 # LOAD DATA
 #===
 
-df <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
+df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
   dplyr::select(year,run_count,imd, perc_bme, mn_dstn,  
                 total_pop, pop_density,perc_non_working_age)%>%
-  mutate(run_rate = run_count/total_pop * 1000/52) 
-#RC: I remove NAs - is this an issue?
-df<-df[complete.cases(df),]
-#RC: correct the calculation for 2010 as only 12 weeks
-df$run_rate[df$year=="2010"]<-df$run_count[df$year=="2010"]/df$total_pop[df$year=="2010"]*1000/12
+  mutate(run_rate = if_else(year=="2010", run_count/total_pop/12*1000, run_count/total_pop/52*1000)) 
+#old alternative code df_merged$run_rate[df_merged$year=="2010"]<-df_merged$run_count[df_merged$year=="2010"]/df_merged$total_pop[df_merged$year=="2010"]*1000/12
+#is removing NAs like this fine?
+df_merged<-df_merged[complete.cases(df_merged),]
 
-#Now create different datasets for each year
-#ideally with a loop so I can run all codes below with a loop
-#How do I do this? 
-#I can see some loop drafts in DoPE_temporal and tried to transfer them here but don't really understand..
-#I need to change all code from DoPE_Public so that plots and results 
-#for each year are saved with separate names..
 
-#RC loop attempt:
-#First I create a storage place for results? like Storage_model_3 <-numeric(10) ?
-#Is this code not needed? for (i in df$year) {df<-df[df$year==i,] ...
+      # FUNCTIONS WHICH WILL BE RUN FOR EACH YEAR)
 
-   
-     # MODEL FUNCTIONS (WHICH WILL BE RUN FOR EACH YEAR)
-     
-     
+#average number of finishers per year
+avrg_run_count=function(x,df=df_merged) {
+  model=print(mean(df_merged$run_count[df_merged$year==x]))
+return(avrg_run_count)}
+avrg_run_count_per_year <- lapply(X = 2010:2019,
+                  FUN = avrg_run_count)
+
+
+#not sure where to put this?? only outputs years?
+#x=c()
+#for (i in 2010:2019){
+#  x=c(x,i)
+#}
+#x
+
+#average run rate per year
+avrg_run_rate=function(x,df=df_merged) {
+  model=print(mean(df_merged$run_rate[df_merged$year==x]))
+  return(avrg_run_rate)}
+avrg_run_rate_per_year <- lapply(X = 2010:2019,
+                                  FUN = avrg_run_rate)
+
+#average ethnic density per year
+avrg_perc_bme=function(x,df=df_merged) {
+  model=print(mean(df_merged$perc_bme[df_merged$year==x]))
+return(avrg_perc_bme)}
+avrg_perc_bme_per_year <- lapply(X = 2010:2019,
+                                  FUN = avrg_perc_bme)
+
+#average imd score per year
+avrg_imd=function(x,df=df_merged) {
+  model=print(mean(df_merged$imd[df_merged$year==x]))
+return(avrg_imd)} 
+avrg_imd_per_year <- lapply(X = 2010:2019,
+                                 FUN = avrg_imd)
+
+
      # poisson regression model
-     f_model = function(x) {
+     f_model = function(x, df=df_merged) {
       
      
-       # Model 3: Poisson model with IMD and Ethnic density and controls - can we prioritise this for now
-       #and leave model 1 and 2 for now?
-       model3 <-  glm(run_count ~ imd + perc_bme +  pop_density + mn_dstn + perc_non_working_age,
+       # Model 3: Poisson model with IMD and Ethnic density (and controls??) 
+       #prioritise this for now and leave model 1 and 2
+       model =  glm(run_count ~ imd + perc_bme +  pop_density + mn_dstn + perc_non_working_age,
                       data = df,
-                      family = poisson(link="log"),
+                      family = poisson(link = "log"),
                       offset = log(total_pop),
-                      subset=which(df$year==x))
+                      subset=which(df$year == x)
+                      )
        
-       # stargazer(model3,ci=TRUE, ci.level=0.95)
-       
-       x = summary(model3)
-       r1.3 = 1-((x$deviance-length(coef(x)[,1]))/x$null.deviance)
-       
-      
-       #RC: code below on predict from DoPE temporal, I don't understand it at all..
-       # predict number of runs in most and least deprived community.
-       temp = predict(object = model3, newdata = fakedata)
-       
+    
        # return ratio
-       return(temp[1]/temp[2])
+       return(model)
      }
+    
+    
      
-     # RUN MODEL FOR EACH YEAR
-     results <- sapply(X = 2010:2019,
-                       FUN = f_model) %>% 
-       as.data.frame %>% 
-       mutate(year = 2010:2019)
+     model3_results <- lapply(X = 2010:2019,
+                       FUN = f_model)
      
  
-  
+     
+     #===
+     # COLOUR PLOT - FIGURE 1
+     #===
+    
+     f_colour_plot = function(x, df=df_merged) { 
+     df <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>% 
+       mutate(urban = if_else(urban==TRUE, "Urban", "Rural"),
+              urban = factor(urban, levels = c("Urban","Rural")),
+              run_rate = if_else(year=="2010", run_count/total_pop/12*1000, run_count/total_pop/52*1000),
+              imd_dec = cut(x = imd,
+                            breaks = seq(0,100,10),        #  quantile(imd,seq(0,1,0.1)),
+                            ordered_result = T,
+                            labels = F)*10,
+              bme_dec= cut(x = perc_bme,
+                           breaks = seq(0,1,0.1),                  # quantile(perc_bme,seq(0,1,0.1)),
+                           ordered_result = T,
+                           labels = F)*10)%>%
+       
+       melt(id.vars = c("code","imd_dec","bme_dec","urban"),
+            measure.vars ="run_rate", 
+            value.name = "run_rate") %>%
+       
+       dplyr::select(imd_dec,bme_dec,run_rate,urban)
+     
+     # aggregate data by deprivation and ethnic density
+     df <- aggregate(run_rate ~ bme_dec + imd_dec + urban, #+ #pop_density_bins, 
+                     data = df, 
+                     FUN= "mean")
+     
+     # create colour plot
+     plot1 <- (ggplot(data = df,
+                      aes(as.factor(bme_dec), as.factor(imd_dec), fill= run_rate)) + 
+                 geom_tile()+
+                 theme_classic()+
+                 scale_fill_viridis(discrete=FALSE,name = "Participation \n Rate") +
+                 xlab("Ethnic Density (%)")+
+                 ylab("Index of Multiple Deprivation (0-100)")  + 
+                 facet_wrap(~urban, nrow = 1) +
+                 labs(caption="Sources: Office for National Statistics \n and parkrunUK")+
+                 theme(legend.position = c(0.92,0.5))+
+                 theme(axis.text.x = element_text(hjust = -0),
+                       axis.text.y = element_text(vjust = -2),
+                       axis.ticks.x = element_blank(),
+                       axis.ticks.y = element_blank())+
+                 annotate("text", x=8.5,y=9.5, label = "Most Deprived & \n Highest Ethnic Density", color = "black", size = 2, fontface = "bold")) 
+     
+     
+      return(plot1)
+     #how to save 10 plots with 10 different names?
+   #ggsave(filename = "./output/colour_plot.png",plot = plot1,device = "png") 
+     }
+
+     colour_plot_results <- lapply(X = 2010:2019,
+                       FUN = f_colour_plot)
+    
+     
+     #########code below has not been adapted for loops##########
+        
 #===
 # DESCRIPTIVE STATISTICS - TABLE 2
 #===
@@ -113,57 +186,6 @@ rownames(cor_mat) <-  colnames(cor_mat) <- c("Participation","IMD","Ethnic Densi
 corrplot(corr = cor_mat,
          addCoef.col = "black",
          type = "upper") 
-
-#===
-# COLOUR PLOT - FIGURE 1
-#===
-
-# read in data from df
-df <- read.csv("./output/lsoa_df.csv") %>% 
-      mutate(urban = if_else(urban==TRUE, "Urban", "Rural"),
-             urban = factor(urban, levels = c("Urban","Rural")),
-             run_rate = run_count/total_pop/52*1000,
-             imd_dec = cut(x = imd,
-                     breaks = seq(0,100,10),        #  quantile(imd,seq(0,1,0.1)),
-                     ordered_result = T,
-                     labels = F)*10,
-             bme_dec= cut(x = perc_bme,
-                    breaks = seq(0,1,0.1),                  # quantile(perc_bme,seq(0,1,0.1)),
-                    ordered_result = T,
-                    labels = F)*10)%>%
-  
-  melt(id.vars = c("code","imd_dec","bme_dec","urban"),
-       measure.vars ="run_rate", 
-       value.name = "run_rate") %>%
-  
-  dplyr::select(imd_dec,bme_dec,run_rate,urban)
-
-# aggregate data by deprivation and ethnic density
-df <- aggregate(run_rate ~ bme_dec + imd_dec + urban, #+ #pop_density_bins, 
-                data = df, 
-                FUN= "mean")
-
-# create colour plot
-plot1 <- (ggplot(data = df,
-                 aes(as.factor(bme_dec), as.factor(imd_dec), fill= run_rate)) + 
-            geom_tile()+
-            theme_classic()+
-            scale_fill_viridis(discrete=FALSE,name = "Participation \n Rate") +
-            xlab("Ethnic Density (%)")+
-            ylab("Index of Multiple Deprivation (0-100)")  + 
-            facet_wrap(~urban, nrow = 1) +
-            labs(caption="Sources: Office for National Statistics \n and parkrunUK")+
-            theme(legend.position = c(0.92,0.5))+
-            theme(axis.text.x = element_text(hjust = -0),
-                  axis.text.y = element_text(vjust = -2),
-                  axis.ticks.x = element_blank(),
-                  axis.ticks.y = element_blank())+
-            annotate("text", x=8.5,y=9.5, label = "Most Deprived & \n Highest Ethnic Density", color = "black", size = 2, fontface = "bold")) 
-#NULL
-
-plot1
-
-ggsave(filename = "./output/colour_plot.png",plot = plot1,device = "png")
 
 
 #===

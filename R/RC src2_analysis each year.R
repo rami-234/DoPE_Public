@@ -24,19 +24,20 @@ df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
   dplyr::select(year,run_count,imd, perc_bme, mn_dstn,  
                 total_pop, pop_density,perc_non_working_age)%>%
   mutate(run_rate = if_else(year=="2010", run_count/total_pop/12*1000, run_count/total_pop/52*1000)) 
-#old alternative code df_merged$run_rate[df_merged$year=="2010"]<-df_merged$run_count[df_merged$year=="2010"]/df_merged$total_pop[df_merged$year=="2010"]*1000/12
-#is removing NAs like this fine?
-df_merged<-df_merged[complete.cases(df_merged),]
+
+#many NAs for some rows but I don't remove for now
+#df_merged<-df_merged[complete.cases(df_merged),]
 
 
       # FUNCTIONS WHICH WILL BE RUN FOR EACH YEAR)
 
 #average number of finishers per year
 avrg_run_count=function(x,df=df_merged) {
-  model=print(mean(df_merged$run_count[df_merged$year==x]))
+  model=print(mean(df_merged$run_count[df_merged$year==x], na.rm=T))
 return(avrg_run_count)}
 avrg_run_count_per_year <- lapply(X = 2010:2019,
                   FUN = avrg_run_count)
+#I added na.rm but why NAs for run_count if I had transformed them to 0?
 
 
 #not sure where to put this?? only outputs years?
@@ -48,21 +49,21 @@ avrg_run_count_per_year <- lapply(X = 2010:2019,
 
 #average run rate per year
 avrg_run_rate=function(x,df=df_merged) {
-  model=print(mean(df_merged$run_rate[df_merged$year==x]))
+  model=print(mean(df_merged$run_rate[df_merged$year==x], na.rm=T))
   return(avrg_run_rate)}
 avrg_run_rate_per_year <- lapply(X = 2010:2019,
                                   FUN = avrg_run_rate)
 
-#average ethnic density per year
+#average ethnic density per year, should always be the same
 avrg_perc_bme=function(x,df=df_merged) {
-  model=print(mean(df_merged$perc_bme[df_merged$year==x]))
+  model=print(mean(df_merged$perc_bme[df_merged$year==x],  na.rm=T))
 return(avrg_perc_bme)}
 avrg_perc_bme_per_year <- lapply(X = 2010:2019,
                                   FUN = avrg_perc_bme)
 
-#average imd score per year
+#average imd score per year, should always be the same
 avrg_imd=function(x,df=df_merged) {
-  model=print(mean(df_merged$imd[df_merged$year==x]))
+  model=print(mean(df_merged$imd[df_merged$year==x],  na.rm=T))
 return(avrg_imd)} 
 avrg_imd_per_year <- lapply(X = 2010:2019,
                                  FUN = avrg_imd)
@@ -83,15 +84,47 @@ avrg_imd_per_year <- lapply(X = 2010:2019,
        
     
        # return ratio
-       return(model)
+       return(model) 
      }
     
-    
+ 
      
      model3_results <- lapply(X = 2010:2019,
-                       FUN = f_model)
+                       FUN = f_model) 
      
- 
+     model3_results[[1]]$coefficients["imd"]
+     model3_results[[1]]
+     
+     #then convert list into dataframe? code below does not work, memory exhausted
+     #m3_df<-data.frame(matrix(unlist(model3_results), nrow=length(model3_results), byrow=T))
+        
+    
+     #create table with all model results for each year
+     stargazer(model3_results[[1]], 
+               model3_results[[2]], 
+               model3_results[[3]],
+               model3_results[[4]],
+               model3_results[[5]],
+               model3_results[[6]],
+               model3_results[[7]],
+               model3_results[[8]],
+               model3_results[[9]],
+               model3_results[[10]],
+               header = FALSE,
+               column.labels	= c("Model 2010","Model 2011",
+                                 "Model 2012", "Model 2013",
+                                 "Model 2014", "Model 2015",
+                                 "Model 2016", "Model 2017",
+                                 "Model 2018", "Model 2019"),
+               ci=FALSE, ci.level=0.95, #font.size= 9, 
+               title="Poisson Log-link GLM Results",
+               dep.var.labels = "Participation",
+               covariate.labels = c("IMD Score",
+                                    "Ethnic-Density",
+                                    "Pop Density",
+                                    "Distance(km)",
+                                    "Non-working-age"))
+     #Where is the output from this stargazer table??
      
      #===
      # COLOUR PLOT - FIGURE 1
@@ -143,13 +176,22 @@ avrg_imd_per_year <- lapply(X = 2010:2019,
       return(plot1)
      #how to save 10 plots with 10 different names?
    #ggsave(filename = "./output/colour_plot.png",plot = plot1,device = "png") 
+     
      }
 
-     colour_plot_results <- lapply(X = 2010:2019,
-                       FUN = f_colour_plot)
+     #function paste0:
+     #for(i in 2010:2020){   filename = paste0("This_file_is_from",i,".csv",sep="")  
+     #subset.df = subset(df, year = i)   
+     #tem.p.plot = ggplot(subset.df) +     ggpoint(aes(x=,y=...))     
+     # print(filename)   
+     #ggsave(filename = filename,plot = tem.p.plot) }
+     
+     colour_plot_results <- lapply(X = 2010:2019, 
+                       FUN = f_colour_plot) #lapply is not for plots, outputs lists
     
      
-     #########code below has not been adapted for loops##########
+    
+      #########code below has not been adapted for loops##########
         
 #===
 # DESCRIPTIVE STATISTICS - TABLE 2
@@ -234,18 +276,6 @@ r1.2 = 1-((x$deviance-length(coef(x)[,1]))/x$null.deviance)
 
 
 
-# PLOT stargazer plot of models
-stargazer(model1, model2, model3,
-          header = FALSE,
-          column.labels	= c("Model 1","Model 2","Model 3"),
-          ci=FALSE, ci.level=0.95, #font.size= 9, 
-          title="Poisson Log-link GLM Results",
-          dep.var.labels = "Participation",
-          covariate.labels = c("IMD Score",
-                               "Ethnic-Density",
-                               "Pop Density",
-                               "Distance(km)",
-                               "Non-working-age"))
 
 
 

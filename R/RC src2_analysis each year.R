@@ -26,6 +26,7 @@ df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
   mutate(run_rate = if_else(year=="2010", run_count/total_pop/12*1000, run_count/total_pop/52*1000)) 
 
 #many NAs for some rows but I don't remove for now
+#code would be
 #df_merged<-df_merged[complete.cases(df_merged),]
 
 
@@ -33,12 +34,15 @@ df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
 
 #average number of finishers per year
 avrg_run_count=function(x,df=df_merged) {
-  model=print(mean(df_merged$run_count[df_merged$year==x], na.rm=T))
+  model=print(mean(df_merged$run_count[df_merged$year==x],na.rm=T))
 return(avrg_run_count)}
 avrg_run_count_per_year <- lapply(X = 2010:2019,
                   FUN = avrg_run_count)
-#I added na.rm but why NAs for run_count if I had transformed them to 0?
-
+#I had to add na.rm but why?
+#I had transformed NAs for run_count to 0?
+#I check
+sum(is.na(df_merged$run_count)) #0, fine
+#but still unclear why I had to add na.rm
 
 #not sure where to put this?? only outputs years?
 #x=c()
@@ -54,13 +58,35 @@ avrg_run_rate=function(x,df=df_merged) {
 avrg_run_rate_per_year <- lapply(X = 2010:2019,
                                   FUN = avrg_run_rate)
 
+#I check that the number of local authorities is the same 
+#for each year
+length(df_merged$perc_bme[df_merged$year==2010])
+#35007
+n_lsoa=function(x,df=df_merged) {
+  model=print(length(df_merged$perc_bme[df_merged$year==x]))
+  return(n_lsoa)}
+n_lsoa_per_year <- lapply(X = 2010:2019,
+                             FUN = n_lsoa)
+#not the same, ranges from 35007 to 35568, why?
+#probably has to do with those LSOAs with code 95EE04W1
+#not picking up all years.... 
+
+#number of local authorities with 0 runs per year
+zero_runs_lsoa=function(x,df=df_merged) {
+  model=print(length(df_merged$run_count[(df_merged$year==x) & (df_merged$run_count==0)]))
+  return(zero_runs_lsoa)}
+zero_runs_per_year <- lapply(X = 2010:2019,
+                                 FUN = zero_runs_lsoa)
+#decreases over time
+
+#Just for checking, I check that functions below
+#give the same result for each year
 #average ethnic density per year, should always be the same
 avrg_perc_bme=function(x,df=df_merged) {
   model=print(mean(df_merged$perc_bme[df_merged$year==x],  na.rm=T))
 return(avrg_perc_bme)}
 avrg_perc_bme_per_year <- lapply(X = 2010:2019,
                                   FUN = avrg_perc_bme)
-
 #average imd score per year, should always be the same
 avrg_imd=function(x,df=df_merged) {
   model=print(mean(df_merged$imd[df_merged$year==x],  na.rm=T))
@@ -74,7 +100,7 @@ avrg_imd_per_year <- lapply(X = 2010:2019,
       
      
        # Model 3: Poisson model with IMD and Ethnic density (and controls??) 
-       #prioritise this for now and leave model 1 and 2
+       #prioritise this for now and leave out model 1 and 2
        model =  glm(run_count ~ imd + perc_bme +  pop_density + mn_dstn + perc_non_working_age,
                       data = df,
                       family = poisson(link = "log"),
@@ -92,13 +118,16 @@ avrg_imd_per_year <- lapply(X = 2010:2019,
      model3_results <- lapply(X = 2010:2019,
                        FUN = f_model) 
      
-     model3_results[[1]]$coefficients["imd"]
-     model3_results[[1]]
+     #I check results from 2018 
+     model3_results[[9]]$coefficients #If I want I can add ["imd"]
+     #coefficients quite different from publication
+     
+     
+     ############code below not edited yet###############
      
      #then convert list into dataframe? code below does not work, memory exhausted
      #m3_df<-data.frame(matrix(unlist(model3_results), nrow=length(model3_results), byrow=T))
         
-    
      #create table with all model results for each year
      stargazer(model3_results[[1]], 
                model3_results[[2]], 

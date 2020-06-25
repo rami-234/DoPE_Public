@@ -13,6 +13,15 @@ library(dplyr)
 library(raster)
 library(rgdal)
 
+# LSOA parkrun participation
+df_finishers = readRDS(file = "cleaned_data/runs_per_lsoa_2010to2020.Rds")
+df_england = df_finishers[grep(pattern = "E",df_finishers$lsoa),] # restrict to England
+# aggregate up by year 
+df_england$date = as.Date(df_england$date)   
+df_england$year = df_england$date %>% format("%Y")
+df_aggregate = df_england %>% group_by(year,lsoa) %>% summarise(finishers = sum(finishers)) %>% ungroup()
+colnames(df_aggregate) = c("year","code","run_count")
+
 # LSOA centroids
 #RC note: LSOA centroids from Paul's file rather than from code
 lsoa_cntrds <- read.csv("lsoa_cntrds.csv")
@@ -26,16 +35,6 @@ lsoa_distance <- apply(dist_M_full,1,FUN= function(x){round(min(x),0)} )
 lsoa_distance <- data.frame(code = lsoa_cntrds$code,
                             mn_dstn = lsoa_distance / 1000) # in km
 rm("dist_M_full","parkrun_events","lsoa_cntrds")
-
-# LSOA parkrun participation: (RC change: copied code from attachment3 project)
-df_finishers = readRDS(file = "cleaned_data/runs_per_lsoa_2010to2020.Rds")
-df_england = df_finishers[grep(pattern = "E",df_finishers$lsoa),] # restrict to England
-
-# aggregate up by year (RC: copied code from attachment3 project)
-df_england$date = as.Date(df_england$date)   
-df_england$year = df_england$date %>% format("%Y")
-df_aggregate = df_england %>% group_by(year,lsoa) %>% summarise(finishers = sum(finishers)) %>% ungroup()
-colnames(df_aggregate) = c("year","code","run_count")
 
 # LSOA total population
 lsoa_pop = read.csv("./raw_data/IoD2019_Population_Denominators.csv",stringsAsFactors = F)
@@ -68,14 +67,14 @@ lsoa_ruralurban <- read.csv("./raw_data/LSOA_Rural_Urban_Classification_2011.csv
   mutate(urban = RUC11CD %in% c("A1","B1", "C1","C2"))
 
 #if 0 runs, combination LSOA-year missing from df_aggregate
-#to addresss this, first I creat a dataframe with all combinations LSOA-Year
+#to addresss this, first create a dataframe with all combinations LSOA-Year
 df_all_lsoas_years<-expand.grid(unique(df_aggregate$year),lsoa_imd$code) 
 names(df_all_lsoas_years)<-c("year","code")
 #if not aggregated, expand.grid gives massive dataset
 #possible strategies: keep essential columns and if it crashes use less years or just sheffield
 #but here aggregated per year first then merged so ok,  sum will work 
 
-#I merge run_counts with all possible combinations of LSOA-Year
+#merge run_counts with all possible combinations of LSOA-Year
 df_lsoa_year_runs = Reduce(function(x, y) merge(x, y,by=c("code","year"), all=TRUE), list(df_aggregate,df_all_lsoas_years))
 # when I check this 
 #it seems to have worked for most LSOAs, 
@@ -94,9 +93,14 @@ lsoa_df = Reduce(function(x, y) merge(x, y,by="code", all=TRUE), list(df_lsoa_ye
 #most variables except run_count are NAs for initial codes such as 95EE04W1 until code E01000001
 #some LSOAs have all years but in messy order, e.g. 2017 before 2010, why?
 
-#I change NAs to 0
+#change NAs to 0
 lsoa_df$run_count[is.na(lsoa_df$run_count)] = 0
 
-
+#export dataset to csv format
 write.csv(lsoa_df,"./output/lsoa_df_08oct2010_28dec2019.csv",row.names = F)
 
+#I make some checks to see that the file is ok
+df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv")
+#I check a random LSOA
+tr<-df_merged[df_merged$code=="E01027818",]
+#seems fine

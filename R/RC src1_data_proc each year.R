@@ -71,8 +71,8 @@ lsoa_ruralurban <- read.csv("./raw_data/LSOA_Rural_Urban_Classification_2011.csv
 df_all_lsoas_years<-expand.grid(unique(df_aggregate$year),lsoa_imd$code) 
 names(df_all_lsoas_years)<-c("year","code")
 #if not aggregated, expand.grid gives massive dataset
-#possible strategies: keep essential columns and if it crashes use less years or just sheffield
-#but here aggregated per year first then merged so ok,  sum will work 
+#but here aggregated per year first then merged so ok,  sum will work
+#(otherwise possible strategies would be: keep essential columns and if it crashes use less years or just sheffield)
 
 #merge run_counts with all possible combinations of LSOA-Year
 df_lsoa_year_runs = Reduce(function(x, y) merge(x, y,by=c("code","year"), all=TRUE), list(df_aggregate,df_all_lsoas_years))
@@ -84,22 +84,50 @@ df_lsoa_year_runs = Reduce(function(x, y) merge(x, y,by=c("code","year"), all=TR
 #for LSOA 95EE01W1 and similar codes, 126 first rows, why? 
 #additional check: 
 #tr<-df_aggr_all_lsoas[df_aggr_all_lsoas$code=="95EE04W1", ]
-#code above does not work
+#code above does not work, why?
 #tr<-df_aggr_all_lsoas[df_aggr_all_lsoas$code=="E01000001",]
 #code above fine, all years
 
-#merge lsoa, year, number of runs with all demographic/socio-economic info about LSOAs 
+#merge lsoa, year and number of runs with all demographic/socio-economic info about LSOAs 
 lsoa_df = Reduce(function(x, y) merge(x, y,by="code", all=TRUE), list(df_lsoa_year_runs, lsoa_distance, lsoa_imd, lsoa_pop,lsoa_density,lsoa_ethnicity,lsoa_ruralurban))
 #most variables except run_count are NAs for initial codes such as 95EE04W1 until code E01000001
-#some LSOAs have all years but in messy order, e.g. 2017 before 2010, why?
+#Most LSOAs have all years but in messy order, e.g. 2017 before 2010, why?
 
 #change NAs to 0
 lsoa_df$run_count[is.na(lsoa_df$run_count)] = 0
 
+#checks to see if dataset is ok:
+
+#check: average ethnic density per year should always be the same
+avrg_perc_bme=function(x,df=lsoa_df) {
+  model=print(mean(lsoa_df$perc_bme[lsoa_df$year==x],  na.rm=T))
+  return(avrg_perc_bme)}
+avrg_perc_bme_per_year <- lapply(X = 2010:2019,
+                                 FUN = avrg_perc_bme)
+#always the same, great
+
+#check: average imd score per year should always be the same
+avrg_imd=function(x,df=lsoa_df) {
+  model=print(mean(lsoa_df$imd[lsoa_df$year==x],  na.rm=T))
+  return(avrg_imd)} 
+avrg_imd_per_year <- lapply(X = 2010:2019,
+                            FUN = avrg_imd)
+#always the same, great
+
+#I check that the number of lsoas is the same for each year
+n_lsoa=function(x,df=lsoa_df) {
+  model=print(nrow(lsoa_df[lsoa_df$year==x,]))
+  return(n_lsoa)}
+n_lsoa_per_year <- lapply(X = 2010:2019,
+                          FUN = n_lsoa)
+#not the same for each year, ranges from 35007 to 35568, why?
+#probably has to do with those LSOAs with code 95EE04W1
+#not picking up all years.... 
+
 #export dataset to csv format
 write.csv(lsoa_df,"./output/lsoa_df_08oct2010_28dec2019.csv",row.names = F)
 
-#I make some checks to see that the file is ok
+#I make a random check on the csv file
 df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv")
 #I check a random LSOA
 tr<-df_merged[df_merged$code=="E01027818",]

@@ -15,7 +15,8 @@ library(rgdal)
 
 # LSOA parkrun participation
 df_finishers = readRDS(file = "cleaned_data/runs_per_lsoa_2010to2020.Rds")
-df_england = df_finishers[grep(pattern = "E",df_finishers$lsoa),] # restrict to England
+#df_england = df_finishers[grep(pattern = "E",df_finishers$lsoa),] # restrict to England
+df_england = df_finishers[substr(x = df_finishers$lsoa,start = 1,stop = 1) == "E",] # restrict to England
 # aggregate up by year 
 df_england$date = as.Date(df_england$date)   
 df_england$year = df_england$date %>% format("%Y")
@@ -73,20 +74,28 @@ names(df_all_lsoas_years)<-c("year","code")
 #if not aggregated, expand.grid gives massive dataset
 #but here aggregated per year first then merged so ok,  sum will work
 #(otherwise possible strategies would be: keep essential columns and if it crashes use less years or just sheffield)
+#I check that n of LSOAs is the same for each year now:
+n_lsoa=function(x,df=df_all_lsoas_years) {
+  model=print(nrow(df_all_lsoas_years[df_all_lsoas_years$year==x,]))
+  return(n_lsoa)}
+n_lsoa_per_year <- lapply(X = 2010:2019,
+                          FUN = n_lsoa)
+#always the same n, 32844, good
 
 #merge run_counts with all possible combinations of LSOA-Year
-df_lsoa_year_runs = Reduce(function(x, y) merge(x, y,by=c("code","year"), all=TRUE), list(df_aggregate,df_all_lsoas_years))
+df_lsoa_year_runs<-merge(df_aggregate,df_all_lsoas_years,by=c("code","year"), all="TRUE")
+#reduce function code below is exactly the same as merge code
+#df_lsoa_year_runs = Reduce(function(x, y) merge(x, y,by=c("code","year"), all=TRUE), list(df_aggregate,df_all_lsoas_years))
 # when I check this 
-#it seems to have worked for most LSOAs, 
-#namely LSOAs starting from code E01000001
-#for these I can see all years and NAs for initial years,
-#BUT I don't see initial years e.g. 2010, 2011, 2012, 2013 
-#for LSOA 95EE01W1 and similar codes, 126 first rows, why? 
-#additional check: 
-#tr<-df_aggr_all_lsoas[df_aggr_all_lsoas$code=="95EE04W1", ]
-#code above does not work, why?
-#tr<-df_aggr_all_lsoas[df_aggr_all_lsoas$code=="E01000001",]
-#code above fine, all years
+#it seems to have worked by looking at dataset BUT
+#I check if n of LSOAs always the same for each year, should be 32844:
+n_lsoa=function(x,df=df_lsoa_year_runs) {
+  model=print(nrow(df_lsoa_year_runs[df_lsoa_year_runs$year==x,]))
+  return(n_lsoa)}
+n_lsoa_per_year <- lapply(X = 2010:2019,
+                          FUN = n_lsoa)
+#number of LSOAs goes from 33098 to 33643, why?? 
+#something went wrong.. a problem with df_aggregate?
 
 #merge lsoa, year and number of runs with all demographic/socio-economic info about LSOAs 
 lsoa_df = Reduce(function(x, y) merge(x, y,by="code", all=TRUE), list(df_lsoa_year_runs, lsoa_distance, lsoa_imd, lsoa_pop,lsoa_density,lsoa_ethnicity,lsoa_ruralurban))
@@ -120,9 +129,7 @@ n_lsoa=function(x,df=lsoa_df) {
   return(n_lsoa)}
 n_lsoa_per_year <- lapply(X = 2010:2019,
                           FUN = n_lsoa)
-#not the same for each year, ranges from 35007 to 35568, why?
-#probably has to do with those LSOAs with code 95EE04W1
-#not picking up all years.... 
+#not the same for each year, ranges from 35007 to 35552, why?
 
 #export dataset to csv format
 write.csv(lsoa_df,"./output/lsoa_df_08oct2010_28dec2019.csv",row.names = F)

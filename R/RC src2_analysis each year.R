@@ -1,6 +1,6 @@
-#===
-# SETUP
-#===
+#=======#
+# SETUP #
+#=======#
 
 #install.packages("corrplot")
 #install.packages("stargazer")
@@ -16,21 +16,18 @@ library(ggplot2)
 library(fitdistrplus)
 library(stargazer)
 
-#===
-# LOAD DATA
-#===
+#===========#
+# LOAD DATA #
+#===========#
 
 df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
   dplyr::select(year,run_count,imd, perc_bme, mn_dstn,  
                 total_pop, pop_density,perc_non_working_age)%>%
   mutate(run_rate = if_else(year=="2010", run_count/total_pop/12*1000, run_count/total_pop/52*1000)) 
 
-#many NAs for some rows but I don't remove for now
-#code would be
-#df_merged<-df_merged[complete.cases(df_merged),]
-
-
-      # FUNCTIONS WHICH WILL BE RUN FOR EACH YEAR)
+#================================#
+#DESCRIPTIVE STATS FOR EACH YEAR #
+#================================#
 
 #average number of finishers per year
 avrg_run_count=function(x,df=df_merged) {
@@ -42,6 +39,10 @@ avrg_run_count_per_year <- lapply(X = 2010:2019,
 #I check
 sum(is.na(df_merged$run_count)) #0, fine
 #but still unclear why I had to add na.rm
+
+#how do I plot the average run count per year?
+#first I create a dataframe?
+#df_plot=data.frame(v1=2010:2019,v2=?)
 
 #average run rate per year
 avrg_run_rate=function(x,df=df_merged) {
@@ -59,17 +60,11 @@ zero_runs_per_year <- lapply(X = 2010:2019,
                                  FUN = zero_runs_lsoa)
 #decreases over time, as expected
 
-#not sure where to put code below, leave out for now
-#x=c()
-#for (i in 2010:2019){
-#  x=c(x,i)
-#}
-#x
-
-     # poisson regression model
+     #========================#
+     #POISSON REGRESSION MODEL#
+     #========================#
      f_model = function(x, df=df_merged) {
       
-     
        # Model 3: Poisson model with IMD and Ethnic density (and controls??) 
        #prioritise this for now and leave out model 1 and 2
        model =  glm(run_count ~ imd + perc_bme +  pop_density + mn_dstn + perc_non_working_age,
@@ -89,15 +84,17 @@ zero_runs_per_year <- lapply(X = 2010:2019,
      
      #I check results from 2018 
      model3_results[[9]]$coefficients #If I want I can add ["imd"] etc
-     #coefficients quite different from publication
+     #coefficients quite different from publication.. why?
+     #similar: constant -0.794, imd -0.035, #distance 0.092 
+     #different: 
+     #ethnic density -1.37 (-0.052 in publication)
+     #pop density -0.000019 (-0.070 in publication)
+     #age -0.781 (-0.01 in publication)
      
-     
-     ############code below not edited yet###############
-     
-     #then convert list into dataframe? code below does not work, memory exhausted
-     #m3_df<-data.frame(matrix(unlist(model3_results), nrow=length(model3_results), byrow=T))
-        
-     #create table with all model results for each year
+     #======================================#
+     #TABLE WITH MODEL RESULTS FOR EACH YEAR#
+     #======================================#
+     #to be outputted as text
      stargazer(model3_results[[1]], 
                model3_results[[2]], 
                model3_results[[3]],
@@ -121,14 +118,12 @@ zero_runs_per_year <- lapply(X = 2010:2019,
                                     "Ethnic-Density",
                                     "Pop Density",
                                     "Distance(km)",
-                                    "Non-working-age"))
-     #Where is the output from this stargazer table??
-     
-     #===
-     # COLOUR PLOT - FIGURE 1
-     #===
+                                    "Non-working-age"),
+               type="text", out="Model3table.txt")
     
-     f_colour_plot = function(x, df=df_merged) { 
+     #===========================#
+     # COLOUR PLOT FOR EACH YEAR #
+     #===========================#
      df <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>% 
        mutate(urban = if_else(urban==TRUE, "Urban", "Rural"),
               urban = factor(urban, levels = c("Urban","Rural")),
@@ -153,127 +148,27 @@ zero_runs_per_year <- lapply(X = 2010:2019,
                      data = df, 
                      FUN= "mean")
      
-     # create colour plot
-     plot1 <- (ggplot(data = df,
-                      aes(as.factor(bme_dec), as.factor(imd_dec), fill= run_rate)) + 
-                 geom_tile()+
-                 theme_classic()+
-                 scale_fill_viridis(discrete=FALSE,name = "Participation \n Rate") +
-                 xlab("Ethnic Density (%)")+
-                 ylab("Index of Multiple Deprivation (0-100)")  + 
-                 facet_wrap(~urban, nrow = 1) +
-                 labs(caption="Sources: Office for National Statistics \n and parkrunUK")+
-                 theme(legend.position = c(0.92,0.5))+
-                 theme(axis.text.x = element_text(hjust = -0),
-                       axis.text.y = element_text(vjust = -2),
-                       axis.ticks.x = element_blank(),
-                       axis.ticks.y = element_blank())+
-                 annotate("text", x=8.5,y=9.5, label = "Most Deprived & \n Highest Ethnic Density", color = "black", size = 2, fontface = "bold")) 
+     # create and save colour plot for each year
+     for(i in 2010:2019){ 
+     subset.df = subset(df, year = i)   
+     year.plot = ggplot(subset.df) +      
+     aes(as.factor(bme_dec), as.factor(imd_dec), fill= run_rate) + 
+  geom_tile()+
+  theme_classic()+
+  scale_fill_viridis(discrete=FALSE,name = "Participation \n Rate") +
+  xlab("Ethnic Density (%)")+
+  ylab("Index of Multiple Deprivation (0-100)")  + 
+  facet_wrap(~urban, nrow = 1) +
+  labs(caption="Sources: Office for National Statistics \n and parkrunUK")+
+  theme(legend.position = c(0.92,0.5))+
+  theme(axis.text.x = element_text(hjust = -0),
+        axis.text.y = element_text(vjust = -2),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank())+
+  annotate("text", x=8.5,y=9.5, label = "Most Deprived & \n Highest Ethnic Density", color = "black", size = 2, fontface = "bold")
+   
+ggsave(filename = paste0("This_file_is_from",i,".png",sep="") ,plot = year.plot,device="png") }
      
-     
-      return(plot1)
-     #how to save 10 plots with 10 different names?
-   #ggsave(filename = "./output/colour_plot.png",plot = plot1,device = "png") 
-     
-     }
-
-     #function paste0:
-     #for(i in 2010:2020){   filename = paste0("This_file_is_from",i,".csv",sep="")  
-     #subset.df = subset(df, year = i)   
-     #tem.p.plot = ggplot(subset.df) +     ggpoint(aes(x=,y=...))     
-     # print(filename)   
-     #ggsave(filename = filename,plot = tem.p.plot) }
-     
-     colour_plot_results <- lapply(X = 2010:2019, 
-                       FUN = f_colour_plot) #lapply is not for plots, outputs lists
-    
-     
-    
-      #########code below has not been adapted for loops##########
-        
-#===
-# DESCRIPTIVE STATISTICS - TABLE 2
-#===
-stargazer(df %>% mutate(perc_non_working_age = perc_non_working_age*100,
-                        perc_bme = perc_bme*100), 
-          type = "latex", style = "aer",
-          header = FALSE, 
-          title="", 
-          median = T,
-          digits=1, digits.extra = 2, #initial.zero = FALSE,
-          covariate.labels=c("Number of Finishers",
-                             "IMD Score",
-                             "Ethnic Density",
-                             "Access (km)",
-                             "Population",
-                             "Population Density",
-                             "Non-working age",
-                             "Participation Rate"))
-
-
-# plots for each year...
-
-#===
-# CORRELATION PLOT - UNUSED
-#===
-cor_mat <-  read.csv("./output/lsoa_df.csv") %>%
-  dplyr::select(run_count,imd, perc_bme, mn_dstn,  
-                total_pop, pop_density,perc_non_working_age) %>%
-  cor
-
-rownames(cor_mat) <-  colnames(cor_mat) <- c("Participation","IMD","Ethnic Density","Access","Total Pop","Pop Density","% Non Working") #substr(colnames(cor_mat),1,20)
-
-corrplot(corr = cor_mat,
-         addCoef.col = "black",
-         type = "upper") 
-
-
-#===
-# POISSON REGRESSION MODEL - FIGURE 2
-#===
-
-df <- read.csv("./output/lsoa_df.csv")
-
-df$pop_density = log(df$pop_density )  # tranforming pop_density to log scale
-
-#RC: Do we want to run model 1 and 2? Shall we prioritise model 3?
-
-#===
-# Model 1: Poisson model IMD and controls.
-#===
-
-
-model1 <- glm(run_count ~ imd  +  pop_density + mn_dstn + perc_non_working_age,
-              data = df,
-              family = poisson(link="log"),
-              offset = log(total_pop))
-
-
-# stargazer(model1,ci=TRUE, ci.level=0.95)
-
-x = summary(model1)
-r1.1 = 1-((x$deviance-length(coef(x)[,1]))/x$null.deviance)
-# r1.1
-
-#===
-# Model 2: Poisson model Ethnic density and controls.
-#===
-
-model2 <- glm(run_count ~  perc_bme +  pop_density + mn_dstn + perc_non_working_age,
-              data = df,
-              family = poisson(link="log"),
-              offset = log(total_pop))
-
-# stargazer(model2,ci=TRUE, ci.level=0.95)
-
-x = summary(model2)
-r1.2 = 1-((x$deviance-length(coef(x)[,1]))/x$null.deviance)
-# r1.2
-
-
-
-
-
-
+      
 
 

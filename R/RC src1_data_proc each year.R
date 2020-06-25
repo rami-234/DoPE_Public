@@ -83,22 +83,21 @@ n_lsoa_per_year <- lapply(X = 2010:2019,
 #always the same n, 32844, good
 
 #merge run_counts with all possible combinations of LSOA-Year
-df_lsoa_year_runs<-merge(df_aggregate,df_all_lsoas_years,by=c("code","year"), all="TRUE")
+df_lsoa_year_runs<-merge(df_aggregate,df_all_lsoas_years,by=c("code","year"), all.y="TRUE")
 #reduce function code below is exactly the same as merge code
 #df_lsoa_year_runs = Reduce(function(x, y) merge(x, y,by=c("code","year"), all=TRUE), list(df_aggregate,df_all_lsoas_years))
 # when I check this 
 #it seems to have worked by looking at dataset BUT
-#I check if n of LSOAs always the same for each year, should be 32844:
+#I check if n of LSOAs always the same for each year, should be 32,844:
 n_lsoa=function(x,df=df_lsoa_year_runs) {
   model=print(nrow(df_lsoa_year_runs[df_lsoa_year_runs$year==x,]))
   return(n_lsoa)}
 n_lsoa_per_year <- lapply(X = 2010:2019,
                           FUN = n_lsoa)
-#number of LSOAs goes from 33098 to 33643, why?? 
-#something went wrong.. a problem with df_aggregate?
+#number of LSOAs always 32,844, great
 
 #merge lsoa, year and number of runs with all demographic/socio-economic info about LSOAs 
-lsoa_df = Reduce(function(x, y) merge(x, y,by="code", all=TRUE), list(df_lsoa_year_runs, lsoa_distance, lsoa_imd, lsoa_pop,lsoa_density,lsoa_ethnicity,lsoa_ruralurban))
+lsoa_df = Reduce(function(x, y) merge(x, y,by="code", all.x=TRUE), list(df_lsoa_year_runs, lsoa_distance, lsoa_imd, lsoa_pop,lsoa_density,lsoa_ethnicity,lsoa_ruralurban))
 #most variables except run_count are NAs for initial codes such as 95EE04W1 until code E01000001
 #Most LSOAs have all years but in messy order, e.g. 2017 before 2010, why?
 
@@ -129,7 +128,7 @@ n_lsoa=function(x,df=lsoa_df) {
   return(n_lsoa)}
 n_lsoa_per_year <- lapply(X = 2010:2019,
                           FUN = n_lsoa)
-#not the same for each year, ranges from 35007 to 35552, why?
+#32,844 for each year, great
 
 #export dataset to csv format
 write.csv(lsoa_df,"./output/lsoa_df_08oct2010_28dec2019.csv",row.names = F)

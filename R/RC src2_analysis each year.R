@@ -28,6 +28,18 @@ df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
 #I take out 2010
 df_merged<-df_merged[df_merged$year!="2010",]
 
+#I change years to 1 to 9 as opposed to 2011 to 2019
+df_merged$year[df_merged$year=="2011"]<-1
+df_merged$year[df_merged$year=="2012"]<-2
+df_merged$year[df_merged$year=="2013"]<-3
+df_merged$year[df_merged$year=="2014"]<-4
+df_merged$year[df_merged$year=="2015"]<-5
+df_merged$year[df_merged$year=="2016"]<-6
+df_merged$year[df_merged$year=="2017"]<-7
+df_merged$year[df_merged$year=="2018"]<-8
+df_merged$year[df_merged$year=="2019"]<-9
+
+
 #================================#
 #DESCRIPTIVE STATS FOR EACH YEAR #
 #================================#
@@ -38,14 +50,19 @@ avrg_run_count=function(x,df=df_merged) {
 return(avrg_run_count)}
 avrg_run_count_per_year <- lapply(X = 2011:2019,
                   FUN = avrg_run_count)
+
+
 #I had to add na.rm but why? I had transformed NAs for run_count to 0..
 #I check
 sum(is.na(df_merged$run_count)) #0, fine
 #but still unclear why I had to add na.rm
 
-#how do I plot the average run count per year?
-#first I create a dataframe?
-#df_plot=data.frame(v1=2010:2019,v2=?)
+#plot
+avrg_run_count_per_year = unlist(avrg_run_count_per_year)
+avrg_run_count_per_year = as.numeric(avrg_run_count_per_year)
+ggplot() +
+  geom_point(aes(x=2011:2019,y=avrg_run_count_per_year)) +
+               geom_line(aes(x=2011:2019,y=avrg_run_count_per_year))
 
 #average run rate per year
 avrg_run_rate=function(x,df=df_merged) {
@@ -62,6 +79,8 @@ zero_runs_lsoa=function(x,df=df_merged) {
 zero_runs_per_year <- lapply(X = 2011:2019,
                                  FUN = zero_runs_lsoa)
 #decreases over time, as expected
+
+
 
     #===============================================================#
     #POISSON REGRESSION MODEL INCLUDING YEAR AS INDEPENDENT VARIABLE#

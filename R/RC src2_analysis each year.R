@@ -25,6 +25,9 @@ df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
                 total_pop, pop_density,perc_non_working_age)%>%
   mutate(run_rate = if_else(year=="2010", run_count/total_pop/12*1000, run_count/total_pop/52*1000)) 
 
+#I take out 2010
+df_merged<-df_merged[df_merged$year!="2010",]
+
 #================================#
 #DESCRIPTIVE STATS FOR EACH YEAR #
 #================================#
@@ -33,7 +36,7 @@ df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
 avrg_run_count=function(x,df=df_merged) {
   model=print(mean(df_merged$run_count[df_merged$year==x],na.rm=T))
 return(avrg_run_count)}
-avrg_run_count_per_year <- lapply(X = 2010:2019,
+avrg_run_count_per_year <- lapply(X = 2011:2019,
                   FUN = avrg_run_count)
 #I had to add na.rm but why? I had transformed NAs for run_count to 0..
 #I check
@@ -48,7 +51,7 @@ sum(is.na(df_merged$run_count)) #0, fine
 avrg_run_rate=function(x,df=df_merged) {
   model=print(mean(df_merged$run_rate[df_merged$year==x], na.rm=T))
   return(avrg_run_rate)}
-avrg_run_rate_per_year <- lapply(X = 2010:2019,
+avrg_run_rate_per_year <- lapply(X = 2011:2019,
                                   FUN = avrg_run_rate)
 
 
@@ -56,13 +59,27 @@ avrg_run_rate_per_year <- lapply(X = 2010:2019,
 zero_runs_lsoa=function(x,df=df_merged) {
   model=print(length(df_merged$run_count[(df_merged$year==x) & (df_merged$run_count==0)]))
   return(zero_runs_lsoa)}
-zero_runs_per_year <- lapply(X = 2010:2019,
+zero_runs_per_year <- lapply(X = 2011:2019,
                                  FUN = zero_runs_lsoa)
 #decreases over time, as expected
 
-     #========================#
-     #POISSON REGRESSION MODEL#
-     #========================#
+    #===============================================================#
+    #POISSON REGRESSION MODEL INCLUDING YEAR AS INDEPENDENT VARIABLE#
+    #===============================================================#
+     df=df_merged
+     model1 =  glm(run_count ~ year+ imd + perc_bme +  pop_density + 
+                     mn_dstn + perc_non_working_age + perc_bme*year + imd*year,
+             data = df,
+             family = poisson(link = "log"),
+             offset = log(total_pop))
+ 
+     stargazer::stargazer(model1,
+                          type = "text",
+                          out = "model1_table.txt")
+
+     #======================================#
+     #POISSON REGRESSION MODEL FOR EACH YEAR#
+     #======================================#
      f_model = function(x, df=df_merged) {
       
        # Model 3: Poisson model with IMD and Ethnic density (and controls??) 
@@ -90,6 +107,7 @@ zero_runs_per_year <- lapply(X = 2010:2019,
      #ethnic density -1.37 (-0.052 in publication)
      #pop density -0.000019 (-0.070 in publication)
      #age -0.781 (-0.01 in publication)
+     
      
      #======================================#
      #TABLE WITH MODEL RESULTS FOR EACH YEAR#

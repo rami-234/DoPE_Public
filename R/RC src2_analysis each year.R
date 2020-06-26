@@ -28,7 +28,8 @@ df_merged <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
 #I take out 2010
 df_merged<-df_merged[df_merged$year!="2010",]
 
-#I change years to 1 to 9 as opposed to 2011 to 2019
+#in order to avoid issues with interaction terms,
+#change years to 1 to 9 as opposed to 2011 to 2019
 df_merged$year[df_merged$year=="2011"]<-1
 df_merged$year[df_merged$year=="2012"]<-2
 df_merged$year[df_merged$year=="2013"]<-3
@@ -46,9 +47,9 @@ df_merged$year[df_merged$year=="2019"]<-9
 
 #average number of finishers per year
 avrg_run_count=function(x,df=df_merged) {
-  model=print(mean(df_merged$run_count[df_merged$year==x],na.rm=T))
-return(avrg_run_count)}
-avrg_run_count_per_year <- lapply(X = 2011:2019,
+  model=mean(df_merged$run_count[df_merged$year==x],na.rm=T)
+return(model)}
+avrg_run_count_per_year <- lapply(X = 1:9,
                   FUN = avrg_run_count)
 
 
@@ -57,30 +58,29 @@ avrg_run_count_per_year <- lapply(X = 2011:2019,
 sum(is.na(df_merged$run_count)) #0, fine
 #but still unclear why I had to add na.rm
 
-#plot
-avrg_run_count_per_year = unlist(avrg_run_count_per_year)
-avrg_run_count_per_year = as.numeric(avrg_run_count_per_year)
+#plot:
+avrg_run_count_per_year_v= as.numeric(unlist(avrg_run_count_per_year))
+class(avrg_run_count_per_year_v)
+class(avrg_run_count_per_year[[1]])
+
 ggplot() +
-  geom_point(aes(x=2011:2019,y=avrg_run_count_per_year)) +
-               geom_line(aes(x=2011:2019,y=avrg_run_count_per_year))
+  geom_point(aes(x=2011:2019,y=avrg_run_count_per_year_v)) +
+  geom_line(aes(x=2011:2019,y=avrg_run_count_per_year_v))
 
 #average run rate per year
 avrg_run_rate=function(x,df=df_merged) {
   model=print(mean(df_merged$run_rate[df_merged$year==x], na.rm=T))
-  return(avrg_run_rate)}
-avrg_run_rate_per_year <- lapply(X = 2011:2019,
+  return(model)}
+avrg_run_rate_per_year <- lapply(X = 1:9,
                                   FUN = avrg_run_rate)
-
 
 #number of local authorities with 0 runs per year
 zero_runs_lsoa=function(x,df=df_merged) {
   model=print(length(df_merged$run_count[(df_merged$year==x) & (df_merged$run_count==0)]))
-  return(zero_runs_lsoa)}
-zero_runs_per_year <- lapply(X = 2011:2019,
+  return(model)}
+zero_runs_per_year <- lapply(X = 1:9,
                                  FUN = zero_runs_lsoa)
 #decreases over time, as expected
-
-
 
     #===============================================================#
     #POISSON REGRESSION MODEL INCLUDING YEAR AS INDEPENDENT VARIABLE#
@@ -115,7 +115,7 @@ zero_runs_per_year <- lapply(X = 2011:2019,
        return(model) 
      }
     
-     model3_results <- lapply(X = 2010:2019,
+     model3_results <- lapply(X = 1:9,
                        FUN = f_model) 
      
      #I check results from 2018 
@@ -186,7 +186,7 @@ zero_runs_per_year <- lapply(X = 2011:2019,
                      FUN= "mean")
      
      # create and save colour plot for each year
-     for(i in 2010:2019){ 
+     for(i in 1:9){ 
      subset.df = subset(df, year = i)   
      year.plot = ggplot(subset.df) +      
      aes(as.factor(bme_dec), as.factor(imd_dec), fill= run_rate) + 

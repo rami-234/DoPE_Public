@@ -29,6 +29,10 @@ df_merged<-df_merged[df_merged$year!="2010",]
   dplyr::select(year,run_count,imd, perc_bme, mn_dstn,  
                 total_pop, pop_density,perc_non_working_age, urban)%>%
   mutate(run_rate = run_count/total_pop/52*1000) 
+  
+  # NOTE: I CHANGE PERC BME TO ACTUAL % INSTEAD OF 0. PROPORTIONS
+  df_merged$perc_bme = df_merged$perc_bme * 100 
+  
   #=============#
   #BASIC SUMMARY#
   #=============#
@@ -41,16 +45,26 @@ df_merged<-df_merged[df_merged$year!="2010",]
   summary(df_merged$total_pop)
   
   
-#================================#
-#DESCRIPTIVE STATS FOR EACH YEAR #
-#================================#
+#==========================================#
+#DESCRIPTIVE STATS AND PLOTS FOR EACH YEAR #
+#==========================================#
+  
+  #Codes belows take the longer coding route, 
+  #could be edited with shorter coding route:
+  #yearly_av_flex = function(year, var = "perc_bme",df = lsoa_df){
+    #mean.var = mean(lsoa_df[lsoa_df$year==year, names(lsoa_df) == var], na.rm=T)
+  #return(mean.var)
+  #}
+  #lapply(X = 2010:2019,yearly_av_flex)
 
 #average number of finishers per year
 avrg_run_count=function(x,df=df_merged) {
   model=mean(df_merged$run_count[df_merged$year==x],na.rm=T)
-  return(model)}
+  return(model)
+  }
 avrg_run_count_per_year <- lapply(X = 2011:2019,
                                   FUN = avrg_run_count)
+avrg_run_count_per_year
 
 #checks on the above
 #I had to add na.rm but why? I had transformed NAs for run_count to 0..
@@ -76,10 +90,12 @@ ggsave(filename = "./output/avrg_runs_plot.png", device = "png")
 
 #average run rate per year (run rate=weekly runs)
 avrg_run_rate=function(x,df=df_merged) {
-  model=print(mean(df_merged$run_rate[df_merged$year==x], na.rm=T))
-  return(model)}
+  model=mean(df_merged$run_rate[df_merged$year==x], na.rm=T)
+  return(model)
+  }
 avrg_run_rate_per_year <- lapply(X = 2011:2019,
                                  FUN = avrg_run_rate)
+avrg_run_rate_per_year 
 
 #for the plot, I need to transform list to numeric:
 avrg_run_rate_per_year_v= as.numeric(unlist(avrg_run_rate_per_year))
@@ -100,10 +116,12 @@ ggsave(filename = "./output/weekly_runs_plot.png", device = "png")
 
 #number of local authorities with 0 runs per year
 zero_runs_lsoa=function(x,df=df_merged) {
-  model=print(length(df_merged$run_count[(df_merged$year==x) & (df_merged$run_count==0)]))
-  return(model)}
+  model=length(df_merged$run_count[(df_merged$year==x) & (df_merged$run_count==0)])
+  return(model)
+  }
 zero_runs_per_year <- lapply(X = 2011:2019,
                              FUN = zero_runs_lsoa)
+zero_runs_per_year
 #decreases over time, as expected
 
 #for the plot, I need to transform list to numeric:
@@ -126,15 +144,19 @@ ggsave(filename = "./output/0_runs_plot.png", device = "png")
 #average number of urban and rural finishers per year
 avrg_run_count_u=function(x,df=df_merged) {
   model=mean(df_merged$run_count[(df_merged$year==x)&(df_merged$urban=="TRUE")],na.rm=T)
-  return(model)}
+  return(model)
+  }
 avrg_run_count_u_per_year <- lapply(X = 2011:2019,
                                   FUN = avrg_run_count_u)
+avrg_run_count_u_per_year 
+
 #transform to numeric for the plot
 avrg_run_count_u_per_year_v= as.numeric(unlist(avrg_run_count_u_per_year))
 
 avrg_run_count_r=function(x,df=df_merged) {
   model=mean(df_merged$run_count[(df_merged$year==x)&(df_merged$urban=="FALSE")],na.rm=T)
-  return(model)}
+  return(model)
+  }
 avrg_run_count_r_per_year <- lapply(X = 2011:2019,
                                     FUN = avrg_run_count_r)
 
@@ -159,7 +181,7 @@ ggsave(filename = "./output/avrg_rural_urban_runs.png", device = "png")
   #geom_point()
 #ggsave(filename = "./output/corr_runs_imd.png", device = "png")
 
-ggplot(df_merged[df_merged$year=="2011",], aes(x=imd,y=run_count))+
+ggplot(df_merged[df_merged$year=="2011",], aes(x=imd,y=run_count, colour=BME_cat))+
   geom_point()+
   ggtitle("Runs in 2011 by LSOA IMD score")+
   theme(plot.title = element_text(hjust = 0.5))+
@@ -186,11 +208,44 @@ ggplot(df_merged[df_merged$year=="2019",], aes(x=imd,y=run_count))+
   ylim(0,1500)
 #ggsave(filename = "./output/runs_imd_2019.png", device = "png")
 
+#I create a new variable to stratify plots by BME as well
+#with col = as.character(BME.cols)
+df_merged$BME_cat<-"<5%"
+df_merged$BME_cat[(df_merged$perc_bme>=5)&(df_merged$perc_bme<=15)]<-"5-15%"
+df_merged$BME_cat[(df_merged$perc_bme>15)]<-">15%"
+
+ggplot(df_merged[df_merged$year=="2011",], aes(x=imd,y=run_count, colour=BME_cat))+
+  geom_point()+
+  ggtitle("Runs in 2011 by LSOA IMD score")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  xlab("IMD score (higher=more deprived)")+
+  ylab("Yearly runs")+
+  ylim(0,1500)
+ggsave(filename = "./output/runs_imd_bme_2011.png", device = "png")
+
+ggplot(df_merged[df_merged$year=="2015",], aes(x=imd,y=run_count, colour=BME_cat))+
+  geom_point()+
+  ggtitle("Runs in 2015 by LSOA IMD score")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  xlab("IMD score (higher=more deprived)")+
+  ylab("Yearly runs")+
+  ylim(0,1500)
+ggsave(filename = "./output/runs_imd_bme_2015.png", device = "png")
+
+ggplot(df_merged[df_merged$year=="2019",], aes(x=imd,y=run_count, colour=BME_cat))+
+  geom_point()+
+  ggtitle("Runs in 2019 by LSOA IMD score")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  xlab("IMD score (higher=more deprived)")+
+  ylab("Yearly runs")+
+  ylim(0,1500)
+ggsave(filename = "./output/runs_imd_bme_2019.png", device = "png")
+
 ggplot(df_merged[df_merged$year=="2011",], aes(x=perc_bme,y=run_count))+
   geom_point()+
   ggtitle("Runs in 2011 by LSOA ethnic minority density")+
   theme(plot.title = element_text(hjust = 0.5))+
-  xlab("Proportion BME")+
+  xlab("Percentage BME")+
   ylab("Yearly runs")+
   ylim(0,1500)
 
@@ -198,7 +253,7 @@ ggplot(df_merged[df_merged$year=="2015",], aes(x=perc_bme,y=run_count))+
   geom_point()+
   ggtitle("Runs in 2015 by LSOA ethnic minority density")+
   theme(plot.title = element_text(hjust = 0.5))+
-  xlab("Proportion BME")+
+  xlab("Percentage BME")+
   ylab("Yearly runs")+
   ylim(0,1500)
 
@@ -206,7 +261,7 @@ ggplot(df_merged[df_merged$year=="2019",], aes(x=perc_bme,y=run_count))+
   geom_point()+
   ggtitle("Runs in 2019 by LSOA ethnic minority density")+
   theme(plot.title = element_text(hjust = 0.5))+
-  xlab("Proportion BME")+
+  xlab("Percentage BME")+
   ylab("Yearly runs")+
   ylim(0,1500)
 
@@ -290,33 +345,33 @@ df <- read.csv("./output/lsoa_df_08oct2010_28dec2019.csv") %>%
          urban = factor(urban, levels = c("Urban","Rural")),
          run_rate = if_else(year=="2010", run_count/total_pop/12*1000, run_count/total_pop/52*1000),
          imd_dec = cut(x = imd,
-                       breaks = seq(0,100,10),        #  quantile(imd,seq(0,1,0.1)),
+                       breaks = quantile(imd,seq(0,1,0.1)),
                        ordered_result = T,
                        labels = F)*10,
          bme_dec= cut(x = perc_bme,
                       breaks = seq(0,1,0.1),                  # quantile(perc_bme,seq(0,1,0.1)),
                       ordered_result = T,
-                      labels = F)*10)%>%
+                      labels = F)*10) %>%
   
-  melt(id.vars = c("code","imd_dec","bme_dec","urban"),
+  melt(id.vars = c("code","imd_dec","bme_dec","urban","year"),
        measure.vars ="run_rate", 
        value.name = "run_rate") %>%
   
-  dplyr::select(imd_dec,bme_dec,run_rate,urban)
+  dplyr::select(imd_dec,bme_dec,run_rate,urban,year)
 
 # aggregate data by deprivation and ethnic density
-df <- aggregate(run_rate ~ bme_dec + imd_dec + urban, #+ #pop_density_bins, 
+df <- aggregate(run_rate ~ bme_dec + imd_dec + urban + year, #+ #pop_density_bins, 
                 data = df, 
                 FUN= "mean")
 
 # create and save colour plot for each year
-for(i in 2011:2019){ 
-  subset.df = subset(df, year = i)   
+for(i in 2010:2019){ 
+  subset.df = subset(df, df$year == i)   
   year.plot = ggplot(subset.df) +      
     aes(as.factor(bme_dec), as.factor(imd_dec), fill= run_rate) + 
     geom_tile()+
     theme_classic()+
-    scale_fill_viridis(discrete=FALSE,name = "Participation \n Rate") +
+    scale_fill_viridis(discrete=FALSE,name = "Participation \n Rate",limits = c(0, max(df$run_rate))) +
     xlab("Ethnic Density (%)")+
     ylab("Index of Multiple Deprivation (0-100)")  + 
     facet_wrap(~urban, nrow = 1) +
@@ -328,8 +383,8 @@ for(i in 2011:2019){
           axis.ticks.y = element_blank())+
     annotate("text", x=8.5,y=9.5, label = "Most Deprived & \n Highest Ethnic Density", color = "black", size = 2, fontface = "bold")
   
-  ggsave(filename = paste0("./output/This_file_is_from",i,".png",sep="") ,plot = year.plot,device="png") }
+  ggsave(filename = paste0("output/This_file_is_from",i,".png",sep="") ,plot = year.plot,device="png") 
+}
 
-
-
-
+  
+ 

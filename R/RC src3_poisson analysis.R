@@ -1,28 +1,22 @@
 #in order to avoid issues with interaction terms,
 #change years to 1 to 9 as opposed to 2011 to 2019
-df_merged$year[df_merged$year=="2011"]<-1
-df_merged$year[df_merged$year=="2012"]<-2
-df_merged$year[df_merged$year=="2013"]<-3
-df_merged$year[df_merged$year=="2014"]<-4
-df_merged$year[df_merged$year=="2015"]<-5
-df_merged$year[df_merged$year=="2016"]<-6
-df_merged$year[df_merged$year=="2017"]<-7
-df_merged$year[df_merged$year=="2018"]<-8
-df_merged$year[df_merged$year=="2019"]<-9
+for(i in 1:9){
+  df_merged$year[df_merged$year==2010+i]<-i
+}
 
     #===============================================================#
     #POISSON REGRESSION MODEL INCLUDING YEAR AS INDEPENDENT VARIABLE#
     #===============================================================#
-     df=df_merged
+     #df=df_merged
      model1 =  glm(run_count ~ year+ imd + perc_bme +  pop_density + 
                      mn_dstn + perc_non_working_age + perc_bme*year + imd*year,
-             data = df,
+             data = df_merged,
              family = poisson(link = "log"),
              offset = log(total_pop))
  
      stargazer::stargazer(model1,
                           type = "text",
-                          out = "./output/model1_table.txt")
+                          out = "./output/model1_table.txt")#Why did Paul delete output?
 
      
      #======================================#
@@ -48,6 +42,7 @@ df_merged$year[df_merged$year=="2019"]<-9
      
      #I check results from 2018 
      model3_results[[9]]$coefficients #If I want I can add ["imd"] etc
+     exp(model3_results[[9]]$coefficients) # rate ratios
      #compare with publication coefficients, some different
      
      
@@ -64,8 +59,12 @@ df_merged$year[df_merged$year=="2019"]<-9
                model3_results[[7]],
                model3_results[[8]],
                model3_results[[9]],
+               # model3_results[[10]],
+               apply.coef = exp, # translate coefs into RATE RATIOS, easier to interpret
+               apply.se   = exp, # same with SEs
                header = FALSE,
-               column.labels	= c("Model 2011",
+               column.labels	= c(# "Model 2010",
+                                 "Model 2011",
                                  "Model 2012", "Model 2013",
                                  "Model 2014", "Model 2015",
                                  "Model 2016", "Model 2017",
@@ -78,7 +77,7 @@ df_merged$year[df_merged$year=="2019"]<-9
                                     "Pop Density",
                                     "Distance(km)",
                                     "Non-working-age"),
-               type="text", out="Model3table.txt")
+               type="text", out="Model3_rate_ratios_table.txt")
     
      
      ######MODEL3 COEFFICIENT PLOTS########

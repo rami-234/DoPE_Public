@@ -1,5 +1,6 @@
 # generate and merge data 
 
+
 #===
 # SET-UP
 #===
@@ -79,6 +80,7 @@ n_lsoa=function(x,df=df_all_lsoas_years) {
   return(n_lsoa)}
 n_lsoa_per_year <- lapply(X = 2010:2019,
                           FUN = n_lsoa)
+n_lsoa_per_year
 #always the same n, 32844, good
 
 #merge run_counts with all possible combinations of LSOA-Year
@@ -88,12 +90,13 @@ df_lsoa_year_runs<-merge(df_aggregate,df_all_lsoas_years,by=c("code","year"), al
 # when I check this 
 #it seems to have worked by looking at dataset BUT
 #I check if n of LSOAs always the same for each year, should be 32,844:
-n_lsoa=function(x,df=df_lsoa_year_runs) {
-  model=print(nrow(df_lsoa_year_runs[df_lsoa_year_runs$year==x,]))
-  return(n_lsoa)}
-n_lsoa_per_year <- lapply(X = 2010:2019,
-                          FUN = n_lsoa)
-#number of LSOAs always 32,844, great
+#n_lsoa=function(x,df=df_lsoa_year_runs) {
+ # model=print(nrow(df_lsoa_year_runs[df_lsoa_year_runs$year==x,]))
+  #return(n_lsoa)}
+#n_lsoa_per_year <- lapply(X = 2010:2019,
+                         # FUN = n_lsoa)
+#n_lsoa_per_year
+#number of LSOAs always 32,844, good
 
 #merge lsoa, year and number of runs with all demographic/socio-economic info about LSOAs 
 lsoa_df = Reduce(function(x, y) merge(x, y,by="code", all.x=TRUE), list(df_lsoa_year_runs, lsoa_distance, lsoa_imd, lsoa_pop,lsoa_density,lsoa_ethnicity,lsoa_ruralurban))
@@ -111,6 +114,7 @@ avrg_perc_bme=function(x,df=lsoa_df) {
   return(avrg_perc_bme)}
 avrg_perc_bme_per_year <- lapply(X = 2010:2019,
                                  FUN = avrg_perc_bme)
+avrg_perc_bme_per_year
 #always the same, great
 
 #check: average imd score per year should always be the same
@@ -119,6 +123,7 @@ avrg_imd=function(x,df=lsoa_df) {
   return(avrg_imd)} 
 avrg_imd_per_year <- lapply(X = 2010:2019,
                             FUN = avrg_imd)
+avrg_imd_per_year
 #always the same, great
 
 #I check that the number of lsoas is the same for each year

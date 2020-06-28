@@ -16,7 +16,9 @@ for(i in 1:9){
  
      stargazer::stargazer(model1,
                           type = "text",
-                          out = "./output/model1_table.txt")#Why did Paul delete output?
+                          out = "./output/model1_table.txt")
+     
+    exp(model1$coefficients)#rate ratios
 
      
      #======================================#
@@ -77,7 +79,7 @@ for(i in 1:9){
                                     "Pop Density",
                                     "Distance(km)",
                                     "Non-working-age"),
-               type="text", out="Model3_rate_ratios_table.txt")
+               type="text", out="Model3_run_rate_rate_ratios_table.txt")
     
      
      ######MODEL3 COEFFICIENT PLOTS########
@@ -116,5 +118,38 @@ for(i in 1:9){
      
      ggsave(filename = "./output/model3coeff.png", device = "png")
      
-    
+     #Now again with rate ratios:
+     IMD_coeff <- c( 0.949, 0.954, 0.962, 0.964, 0.964, 0.965, 0.966, 0.966, 0.966) 
+     Ethnic_D_coeff <- c(0.996, 0.994, 0.989, 0.986, 0.985, 0.985, 0.985, 0.985, 0.986)   
+     Pop_Dens_coeff <- c(1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000) 
+     Distance_coeff <- c(0.869, 0.873, 0.882, 0.892, 0.896, 0.905, 0.910, 0.909, 0.922)
+     NW_age_coeff<- c(0.703, 0.668, 0.670, 0.681, 0.742, 0.826, 0.917, 0.891, 0.839)
+     Constant <-  c(0.025, 0.047, 0.094, 0.147, 0.200, 0.246, 0.283, 0.327, 0.387) 
+     year_for_coeff<-2011:2019
+     
+     coeff.df<-data.frame(year_for_coeff,IMD_coeff,Ethnic_D_coeff,Pop_Dens_coeff,Distance_coeff, NW_age_coeff, Constant)
+     
+     ggplot() +
+       geom_point(aes(x=2011:2019,y=IMD_coeff,col="IMD")) +
+       geom_line(aes(x=2011:2019,y=IMD_coeff,col="IMD"))+
+       geom_point(aes(x=2011:2019,y=Ethnic_D_coeff,col="Ethnic density"))+
+       geom_line(aes(x=2011:2019,y=Ethnic_D_coeff,col="Ethnic density"))+
+       geom_point(aes(x=2011:2019,y=Pop_Dens_coeff,col="Population Density"))+
+       geom_line(aes(x=2011:2019,y=Pop_Dens_coeff,col="Population Density"))+
+      geom_point(aes(x=2011:2019,y=Distance_coeff,col="Distance"))+
+      geom_line(aes(x=2011:2019,y=Distance_coeff,col="Distance"))+
+       geom_point(aes(x=2011:2019,y=NW_age_coeff,col="Non-working age"))+
+       geom_line(aes(x=2011:2019,y=NW_age_coeff,col="Non-working age"))+ 
+       geom_point(aes(x=2011:2019,y=Constant,col="Constant"))+
+       geom_line(aes(x=2011:2019,y=Constant,col="Constant"))+ 
+       ggtitle("Rate ratios for each year from Poisson")+
+       theme(plot.title = element_text(hjust = 0.5))+
+       xlab("Year (2011 to 2019)")+
+       ylab("Rate ratios")+
+       scale_x_continuous(breaks=c(round(2011:2019)))      
+     
+     ggsave(filename = "./output/model3rateratios.png", device = "png")
+     
+     
+     
      

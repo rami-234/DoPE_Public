@@ -33,6 +33,13 @@ df_merged<-df_merged[df_merged$year!="2010",]
   # NOTE: I CHANGE PERC BME TO ACTUAL % INSTEAD OF 0. PROPORTIONS
   df_merged$perc_bme = df_merged$perc_bme * 100 
   
+  
+  #I create a new variable to stratify plots by BME as well
+  df_merged$BME_cat[(df_merged$perc_bme<=15)]<-"<=15%"
+  #df_merged$BME_cat[(df_merged$perc_bme>=5)&(df_merged$perc_bme<=15)]<-"5-15%"
+  df_merged$BME_cat[(df_merged$perc_bme>15)]<-">15%"
+ 
+  
   #=============#
   #BASIC SUMMARY#
   #=============#
@@ -87,6 +94,58 @@ plot_avrg_runs<-ggplot() +
   scale_x_continuous(breaks=c(round(2011:2019)))
 
 ggsave(filename = "./output/avrg_runs_plot.png", device = "png")
+
+#average number of runs by BME category
+avrg_run_count_lowBME=function(x,df=df_merged) {
+  model=mean(df_merged$run_count[(df_merged$year==x)&(df_merged$BME_cat=="<=15%")],na.rm=T)
+  return(model)
+}
+avrg_run_count_lowBME_per_year <- lapply(X = 2011:2019,
+                                    FUN = avrg_run_count_lowBME)
+avrg_run_count_lowBME_per_year 
+
+#transform to numeric for the plot
+avrg_run_count_lowBME_per_year_v= as.numeric(unlist(avrg_run_count_lowBME_per_year))
+
+#avrg_run_count_BME5_15=function(x,df=df_merged) {
+#  model=mean(df_merged$run_count[(df_merged$year==x)&(df_merged$BME_cat=="5-15%")],na.rm=T)
+#  return(model)
+#}
+#avrg_run_count_BME5_15_per_year <- lapply(X = 2011:2019,
+                                    #FUN = avrg_run_count_BME5_15)
+
+#for the plot, I need to transform list to numeric:
+#avrg_run_count_BME5_15_per_year_v= as.numeric(unlist(avrg_run_count_BME5_15_per_year))
+
+avrg_run_count_highBME=function(x,df=df_merged) {
+  model=mean(df_merged$run_count[(df_merged$year==x)&(df_merged$BME_cat==">15%")],na.rm=T)
+  return(model)
+}
+avrg_run_count_highBME_per_year <- lapply(X = 2011:2019,
+                                          FUN = avrg_run_count_highBME)
+
+#for the plot, I need to transform list to numeric:
+avrg_run_count_highBME_per_year_v= as.numeric(unlist(avrg_run_count_highBME_per_year))
+
+ggplot() +
+  geom_point(aes(x=2011:2019,y=avrg_run_count_lowBME_per_year_v,col="BME <=15%")) +
+  geom_line(aes(x=2011:2019,y=avrg_run_count_lowBME_per_year_v,col="BME <=15%"))+
+  #geom_point(aes(x=2011:2019,y=avrg_run_count_BME5_15_per_year_v,col="2. BME 5-15%")) +
+ # geom_line(aes(x=2011:2019,y=avrg_run_count_BME5_15_per_year_v,col="2. BME 5-15%"))+
+  geom_point(aes(x=2011:2019,y=avrg_run_count_highBME_per_year_v,col="BME >15%")) +
+  geom_line(aes(x=2011:2019,y=avrg_run_count_highBME_per_year_v,col="BME >15%"))+
+  ggtitle("Mean n of runs per LSOA by %BME")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  xlab("Year (2011 to 2019)")+
+  ylab("Number of runs")+
+  scale_x_continuous(breaks=c(round(2011:2019)))
+ggsave(filename = "./output/avrg_runs_BME.png", device = "png")
+
+#check counter-intuitive result:
+#mean(df_merged$run_count[df_merged$BME_cat=="<5%"])
+#mean(df_merged$run_count[df_merged$BME_cat=="5-15%"])
+#mean(df_merged$run_count[df_merged$BME_cat==">15%"])
+#all fine
 
 #average run rate per year (run rate=weekly runs)
 avrg_run_rate=function(x,df=df_merged) {
@@ -181,6 +240,11 @@ ggsave(filename = "./output/avrg_rural_urban_runs.png", device = "png")
   #geom_point()
 #ggsave(filename = "./output/corr_runs_imd.png", device = "png")
 
+#I could stratify plots below by BME with 3 plots next to each other
+#ggplot(your_data) + 
+  #geom_Line(... your plot stuff) +
+ #facet_grid(~bme_group_variable,nrow=1)
+
 ggplot(df_merged[df_merged$year=="2011",], aes(x=imd,y=run_count, colour=BME_cat))+
   geom_point()+
   ggtitle("Runs in 2011 by LSOA IMD score")+
@@ -207,39 +271,6 @@ ggplot(df_merged[df_merged$year=="2019",], aes(x=imd,y=run_count))+
   ylab("Yearly runs")+
   ylim(0,1500)
 #ggsave(filename = "./output/runs_imd_2019.png", device = "png")
-
-#I create a new variable to stratify plots by BME as well
-#with col = as.character(BME.cols)
-df_merged$BME_cat<-"<5%"
-df_merged$BME_cat[(df_merged$perc_bme>=5)&(df_merged$perc_bme<=15)]<-"5-15%"
-df_merged$BME_cat[(df_merged$perc_bme>15)]<-">15%"
-
-ggplot(df_merged[df_merged$year=="2011",], aes(x=imd,y=run_count, colour=BME_cat))+
-  geom_point()+
-  ggtitle("Runs in 2011 by LSOA IMD score")+
-  theme(plot.title = element_text(hjust = 0.5))+
-  xlab("IMD score (higher=more deprived)")+
-  ylab("Yearly runs")+
-  ylim(0,1500)
-ggsave(filename = "./output/runs_imd_bme_2011.png", device = "png")
-
-ggplot(df_merged[df_merged$year=="2015",], aes(x=imd,y=run_count, colour=BME_cat))+
-  geom_point()+
-  ggtitle("Runs in 2015 by LSOA IMD score")+
-  theme(plot.title = element_text(hjust = 0.5))+
-  xlab("IMD score (higher=more deprived)")+
-  ylab("Yearly runs")+
-  ylim(0,1500)
-ggsave(filename = "./output/runs_imd_bme_2015.png", device = "png")
-
-ggplot(df_merged[df_merged$year=="2019",], aes(x=imd,y=run_count, colour=BME_cat))+
-  geom_point()+
-  ggtitle("Runs in 2019 by LSOA IMD score")+
-  theme(plot.title = element_text(hjust = 0.5))+
-  xlab("IMD score (higher=more deprived)")+
-  ylab("Yearly runs")+
-  ylim(0,1500)
-ggsave(filename = "./output/runs_imd_bme_2019.png", device = "png")
 
 ggplot(df_merged[df_merged$year=="2011",], aes(x=perc_bme,y=run_count))+
   geom_point()+
